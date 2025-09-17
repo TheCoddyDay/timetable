@@ -38,7 +38,7 @@
                             <td>{{ $class->teacher_name }}</td>
                             <td>{{ $class->subject }}</td>
                             <td>{{ $class->class_room }}</td>
-                            <td>{{ $class->start_time }} - {{ $class->end_time }}</td>
+                            <td>{{ date('g:i A', strtotime($class->start_time)) }} - {{ date('g:i A', strtotime($class->end_time)) }}</td>
                         </tr>
                         @empty
                         <tr>
@@ -82,7 +82,7 @@
                             <td>{{ $next->teacher_name }}</td>
                             <td>{{ $next->subject }}</td>
                             <td>{{ $next->class_room }}</td>
-                            <td>{{ $next->start_time }}</td>
+                            <td>{{ date('g:i A', strtotime($next->start_time)) }}</td>
                         </tr>
                         @endforeach
                         @empty
@@ -94,8 +94,6 @@
 
                 </table>
 
-
-
             </div>
         </div>
     </div>
@@ -103,48 +101,49 @@
 
 <script>
     async function refreshSchedule() {
-        const response = await fetch("{{ route('timetable.index') }}", {
-            headers: {
-                "X-Requested-With": "XMLHttpRequest"
-            }
-        });
-        const data = await response.json();
+        try {
+            const response = await fetch("{{ route('timetable.index') }}", {
+                headers: { "X-Requested-With": "XMLHttpRequest" },
+                cache: 'no-store'
+            });
+            const contentType = response.headers.get('content-type') || '';
+            if (!contentType.includes('application/json')) return;
 
-        // Update Current Class Table
-        const currentBody = document.querySelector('#current-class tbody');
-        if (data.currentClasses.length > 0) {
-            currentBody.innerHTML = data.currentClasses.map(c => `
-        <tr>
-            <td>${c.teacher_name}</td>
-            <td>${c.subject}</td>
-            <td>${c.class_room}</td>
-            <td>${c.start_time} - ${c.end_time}</td>
-        </tr>`).join('');
-        } else {
-            currentBody.innerHTML = `<tr><td colspan="4" class="text-center">No class is currently running</td></tr>`;
-        }
+            const data = await response.json();
 
-
-        // Update Next Class Table
-        const nextBody = document.querySelector('#next-classes tbody');
-        if (data.nextClasses.length > 0) {
-            nextBody.innerHTML = data.nextClasses.map(pair =>
-                pair.next.map(next => `
+            const currentBody = document.querySelector('#current-class tbody');
+            currentBody.innerHTML = Array.isArray(data.currentClasses) && data.currentClasses.length
+              ? data.currentClasses.map(c => `
             <tr>
-                <td>${pair.current.subject} (ends ${pair.current.end_time})</td>
-                <td>${next.teacher_name}</td>
-                <td>${next.subject}</td>
-                <td>${next.class_room}</td>
-                <td>${next.start_time}</td>
+                <td>${c.teacher_name}</td>
+                <td>${c.subject}</td>
+                <td>${c.class_room}</td>
+                <td>${formatTime(c.start_time)} - ${formatTime(c.end_time)}</td>
             </tr>`).join('')
-            ).join('');
-        } else {
-            nextBody.innerHTML = `<tr><td colspan="5" class="text-center">No next class found</td></tr>`;
-        }
+              : `<tr><td colspan="4" class="text-center">No class is currently running</td></tr>`;
 
-
+            const nextBody = document.querySelector('#next-classes tbody');
+            nextBody.innerHTML = Array.isArray(data.nextClasses) && data.nextClasses.length
+              ? data.nextClasses.map(pair =>
+                  pair.next.map(next => `
+                <tr>
+                    <td>${next.teacher_name}</td>
+                    <td>${next.subject}</td>
+                    <td>${next.class_room}</td>
+                    <td>${formatTime(next.start_time)}</td>
+                </tr>`).join('')
+                ).join('')
+              : `<tr><td colspan="4" class="text-center">No next class found</td></tr>`;
+            
+            function formatTime(timeString) {
+                const d = new Date('2000-01-01T' + timeString);
+                return d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+            }
+        } catch (e) {}
     }
 
-    setInterval(refreshSchedule, 60000); // Refresh every minute
+    refreshSchedule();
+    setInterval(refreshSchedule, 30000);
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) refreshSchedule(); });
 </script>
 @endsection

@@ -39,7 +39,7 @@
                 <ul class="navbar-nav">
                     <li class="nav-item me-3 d-none d-lg-block">
                         <span class="navbar-text">
-                            <i class="fas fa-clock me-1"></i>{{ now('Asia/Kolkata')->format('H:i:s') }}
+                            <i class="fas fa-clock me-1"></i><span id="navClock">{{ now('Asia/Kolkata')->format('h:i:s A') }}</span>
                         </span>
                     </li>
                     @guest
@@ -83,11 +83,11 @@
                 <div class="col-md-6 text-md-end">
                     <p class="mb-1">
                         <i class="fas fa-clock me-1"></i>
-                        Current Time: {{ now('Asia/Kolkata')->format('d M Y, H:i:s') }}
+                        Current Time: <span id="footerClock">{{ now('Asia/Kolkata')->format('d M Y, h:i:s A') }}</span>
                     </p>
                     <p class="mb-0">
                         <i class="fas fa-calendar me-1"></i>
-                        {{ now('Asia/Kolkata')->format('l') }}
+                        <span id="footerDay">{{ now('Asia/Kolkata')->format('l') }}</span>
                     </p>
                 </div>
             </div>
@@ -104,5 +104,32 @@
 
     <!-- Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        (function(){
+            function updateClocks(){
+                try {
+                    const now = new Date();
+                    // Convert to Asia/Kolkata (IST) using locale options
+                    const timeNav = now.toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata', hour12: true });
+                    const dateTimeFooter = now.toLocaleString('en-IN', {
+                        timeZone: 'Asia/Kolkata',
+                        day: '2-digit', month: 'short', year: 'numeric',
+                        hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true
+                    });
+                    const dayFooter = now.toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', weekday: 'long' });
+
+                    const navClock = document.getElementById('navClock');
+                    const footerClock = document.getElementById('footerClock');
+                    const footerDay = document.getElementById('footerDay');
+                    if (navClock) navClock.textContent = timeNav;
+                    if (footerClock) footerClock.textContent = dateTimeFooter.replace(',', '');
+                    if (footerDay) footerDay.textContent = dayFooter;
+                } catch (e) { /* no-op */ }
+            }
+            updateClocks();
+            setInterval(updateClocks, 1000);
+            document.addEventListener('visibilitychange', () => { if (!document.hidden) updateClocks(); });
+        })();
+    </script>
 </body>
 </html>
